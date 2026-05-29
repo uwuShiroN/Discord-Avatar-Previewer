@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord Avatar Preview v1</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#1e1f22;--sidebar:#2b2d31;--chat:#313338;--input-bg:#383a40;
+  --border:#1e1f22;--muted:#80848e;--text:#dbdee1;--heading:#f2f3f5;
+  --blurple:#5865f2;--blurple-h:#4752c4;--green:#3ba55c;--red:#ed4245;
+  --card:#313338;--divider:#3f4147;
+  --track:#4e5058;--track-fill:#5865f2;
+  --sl-thumb:#fff;--sl-track:#4e5058;
+  --btn-sec:#313338;--btn-sec-t:#b5bac1;
+  --msg-hover:rgba(4,4,5,.07);
+  --panel-width:320px;
+}
+.light{
+  --bg:#f2f3f5;--sidebar:#e3e5e8;--chat:#ffffff;--input-bg:#e0e2e5;
+  --border:#d4d7dc;--muted:#4e5058;--text:#2e3338;--heading:#060607;
+  --card:#ffffff;--divider:#c4c9d0;
+  --track:#c4c9d0;--track-fill:#5865f2;
+  --sl-thumb:#fff;--sl-track:#c4c9d0;
+  --btn-sec:#e0e2e5;--btn-sec-t:#4e5058;
+  --msg-hover:rgba(6,6,7,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'gg sans','Noto Sans TC',sans-serif;color:var(--text);transition:background .2s,color .2s;}
+body{display:flex;flex-direction:column;}
+
+.topbar{height:52px;background:var(--sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:10;}
+.topbar-dot{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#5865f2,#8892ff);flex-shrink:0;box-shadow:0 0 8px rgba(88,101,242,.4);}
+.topbar-title{font-size:15px;font-weight:700;color:var(--heading);}
+.topbar-sub{font-size:12px;color:var(--muted);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.switch-group{display:flex;align-items:center;gap:6px;}
+.switch-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.seg{display:flex;background:var(--bg);border-radius:6px;padding:2px;gap:1px;}
+.seg-btn{padding:4px 9px;border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;border-radius:4px;transition:background .12s,color .12s;white-space:nowrap;}
+.seg-btn.active{background:var(--blurple);color:#fff;}
+.seg-btn:hover:not(.active){background:var(--divider);color:var(--heading);}
+
+.icon-toggle-btn{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background .15s,color .15s;}
+.icon-toggle-btn:hover{background:var(--divider);color:var(--heading);}
+
+.workspace{display:flex;flex:1;min-height:0;}
+
+.resizable-panel{width:var(--panel-width);min-width:220px;max-width:520px;background:var(--sidebar);display:flex;flex-direction:column;position:relative;overflow:hidden;flex-shrink:0;}
+.resize-handle{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;background:transparent;z-index:20;transition:background .15s;}
+.resize-handle:hover,.resize-handle.dragging{background:var(--blurple);}
+.panel-inner{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;}
+
+.sec-label{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;}
+.divider{height:0.5px;background:var(--divider);}
+
+.upload-zone{border:2px dashed var(--divider);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;padding:28px 12px;min-height:130px;transition:background .15s,border-color .15s;}
+.upload-zone:hover{background:var(--chat);border-color:var(--blurple);}
+.upload-zone i{font-size:30px;color:var(--muted);}
+.upload-zone span{font-size:13px;font-weight:600;color:var(--heading);}
+.upload-zone small{font-size:11px;color:var(--muted);}
+#fileInput{display:none;}
+
+.crop-section{display:none;flex-direction:column;gap:10px;}
+
+.canvas-outer{position:relative;background:var(--bg);border-radius:10px;overflow:hidden;cursor:crosshair;user-select:none;touch-action:none;}
+#sc{display:block;width:100%;height:auto;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
+.crop-box{position:absolute;border:2px solid rgba(255,255,255,.88);box-shadow:0 0 0 9999px rgba(0,0,0,.6);border-radius:50%;cursor:move;pointer-events:all;transform:translate3d(0,0,0);}
+.light .crop-box{border-color:rgba(0,0,0,.7);box-shadow:0 0 0 9999px rgba(0,0,0,.45);}
+.rh{position:absolute;width:13px;height:13px;background:#fff;border-radius:50%;right:-6px;bottom:-6px;cursor:nwse-resize;pointer-events:all;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+
+.slrow{display:flex;align-items:center;gap:8px;}
+.slrow label{font-size:12px;color:var(--heading);min-width:56px;}
+.slrow .sv{font-size:12px;color:var(--muted);min-width:34px;text-align:right;}
+.slrow input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:20px;background:transparent;cursor:pointer;padding:0;}
+.slrow input[type=range]:focus{outline:none;}
+.slrow input[type=range]::-webkit-slider-container{display:flex;align-items:center;}
+.slrow input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:linear-gradient(to right,var(--track-fill) var(--pct,50%),var(--sl-track) var(--pct,50%));}
+.slrow input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--sl-track);}
+.slrow input[type=range]::-moz-range-progress{height:8px;border-radius:4px;background:var(--track-fill);}
+.slrow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--sl-thumb);box-shadow:0 1px 4px rgba(0,0,0,.35);margin-top:-4px;transition:transform .1s;}
+.slrow input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+.slrow input[type=range]::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;background:var(--sl-thumb);box-shadow:0 1px 4px rgba(0,0,0,.35);}
+
+.btn-row{display:flex;gap:6px;}
+.btn-sm{flex:1;padding:8px 10px;background:var(--btn-sec);color:var(--btn-sec-t);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .15s,opacity .15s;}
+.btn-sm:hover{opacity:.85;}
+.btn-dl{background:#1e6b38;color:#fff;}
+
+.prev-strip{display:flex;align-items:flex-end;gap:14px;background:var(--chat);border-radius:10px;padding:12px 14px;}
+.pv-item{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.pv-item p{font-size:10px;color:var(--muted);}
+.av,.dav{border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;background:var(--blurple);}
+.av img,.dav img{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+
+.dc-wrap{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--chat);}
+.dc-hd{height:48px;background:var(--chat);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:8px;flex-shrink:0;}
+.dc-hd i{font-size:20px;color:var(--muted);}
+.dc-ch{font-size:16px;font-weight:700;color:var(--heading);}
+.dc-sep{width:1px;height:18px;background:var(--divider);margin:0 4px;}
+.dc-topic{font-size:13px;color:var(--muted);}
+
+.chat-viewport{flex:1;overflow:hidden;position:relative;}
+.chat-scale{transform-origin:top left;width:100%;padding:8px 0 12px;}
+.msg{display:flex;padding:2px 16px;border-radius:2px;}
+.msg:hover{background:var(--msg-hover);}
+.msg.first{margin-top:14px;}
+.msg-av-col{flex-shrink:0;display:flex;justify-content:center;}
+.mc{flex:1;min-width:0;padding-left:12px;}
+.mh{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;}
+.uname{font-size:15px;font-weight:600;color:var(--heading);line-height:1.3;}
+.ts{font-size:11px;color:#4e5058;}
+.mt{font-size:15px;color:var(--text);line-height:1.55;}
+.badge{display:inline-block;background:var(--blurple);color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;font-weight:700;}
+
+.dc-inp-area{padding:8px 16px 14px;background:var(--chat);flex-shrink:0;}
+.dc-inp{background:var(--input-bg);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;}
+.dc-inp i{font-size:18px;}
+
+.footer{height:36px;background:var(--sidebar);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--muted);flex-shrink:0;}
+.footer strong{color:var(--heading);}
+</style>
+</head>
+<body>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<div class="topbar">
+  <div class="topbar-dot"></div>
+  <span class="topbar-title">Discord Avatar Preview</span>
+  <span class="topbar-sub" id="heroSub">Upload, crop and preview your avatar instantly</span>
+  <div class="topbar-right">
+    <div class="switch-group">
+      <span class="switch-label" id="langLabel">Lang</span>
+      <div class="seg" id="langSeg">
+        <button class="seg-btn active" data-lang="mixed">Mixed</button>
+        <button class="seg-btn" data-lang="en">English</button>
+        <button class="seg-btn" data-lang="zh">中文</button>
+      </div>
+    </div>
+    <button class="icon-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+      <i class="ti ti-moon" id="themeIcon"></i>
+    </button>
+  </div>
+</div>
+
+<div class="workspace">
+  <div class="resizable-panel" id="resizablePanel">
+    <div class="resize-handle" id="resizeHandle"></div>
+    <div class="panel-inner">
+
+      <div>
+        <div class="sec-label" id="lbl-avatar-settings">頭像設定 / Avatar Settings</div>
+        <div class="upload-zone" id="uploadZone">
+          <i class="ti ti-photo-up"></i>
+          <span id="upload-title">點擊上傳圖片 / Click to Upload</span>
+          <small id="upload-sub">PNG · JPG · WEBP</small>
+        </div>
+      </div>
+
+      <div class="crop-section" id="cropSec">
+        <div class="sec-label" id="lbl-crop">拖曳裁切 / Drag to Crop</div>
+        <div class="canvas-outer" id="cw">
+          <canvas id="sc"></canvas>
+          <div class="crop-box" id="cb"><div class="rh" id="rh"></div></div>
+        </div>
+        <div class="slrow">
+          <label id="lbl-circle-size">圓框大小</label>
+          <input type="range" id="csSlider" min="20" max="500" value="100" step="1">
+          <span class="sv" id="csVal">100px</span>
+        </div>
+
+        <div class="btn-row" style="margin-top: 4px;">
+          <button class="btn-sm btn-dl" id="dlBtn">
+            <i class="ti ti-download"></i><span id="lbl-dl">下載頭像</span>
+          </button>
+          <button class="btn-sm" id="resetBtn">
+            <i class="ti ti-refresh"></i><span id="lbl-reset">重新上傳</span>
+          </button>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label" id="lbl-preview">尺寸預覽 / Size Preview</div>
+        <div class="prev-strip">
+          <div class="pv-item">
+            <div class="av" id="pv80" style="width:72px;height:72px;"><i class="ti ti-user" style="font-size:30px;color:#fff"></i></div>
+            <p id="pv80-lbl">個人頁 80px</p>
+          </div>
+          <div class="pv-item">
+            <div class="av" id="pv40" style="width:40px;height:40px;"><i class="ti ti-user" style="font-size:18px;color:#fff"></i></div>
+            <p id="pv40-lbl">訊息 40px</p>
+          </div>
+          <div class="pv-item">
+            <div class="av" id="pv24" style="width:24px;height:24px;"><i class="ti ti-user" style="font-size:11px;color:#fff"></i></div>
+            <p id="pv24-lbl">成員 24px</p>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec-label" id="lbl-scale">聊天室縮放預覽</div>
+        <div class="slrow">
+          <label id="lbl-chat-scale">縮放大小</label>
+          <input type="range" id="avSlider" min="24" max="72" value="40" step="1">
+          <span class="sv" id="avVal">40px</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="dc-wrap">
+    <div class="dc-hd">
+      <i class="ti ti-hash"></i>
+      <span class="dc-ch">general</span>
+      <div class="dc-sep"></div>
+      <span class="dc-topic" id="dc-topic-text">頭像預覽頻道</span>
+    </div>
+
+    <div class="chat-viewport">
+      <div class="chat-scale" id="dcBody">
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" id="dav1" style="width:40px;height:40px;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh">
+              <span class="uname" id="you-name-1">你<span class="badge" id="badge-1">自己</span></span>
+              <span class="ts" id="ts1">今天 PM 6:05</span>
+            </div>
+            <div class="mt" id="mt1">換頭像了 看看</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="msg-av-col" style="width:52px;"></div>
+          <div class="mc"><div class="mt" id="mt1b">左邊調完這邊會直接變</div></div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" style="width:40px;height:40px;background:#ed4245;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh"><span class="uname" style="color:#ed4245;">imnoob</span><span class="ts" id="ts2">今天 PM 6:05</span></div>
+            <div class="mt" id="mt2">這張可以 🔥🔥🔥</div>
+          </div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" style="width:40px;height:40px;background:#3ba55c;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh"><span class="uname" style="color:#3ba55c;">on9_916</span><span class="ts" id="ts3">今天 PM 6:06</span></div>
+            <div class="mt" id="mt3">我覺得拉完了 🗣</div>
+          </div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" style="width:40px;height:40px;background:#ed4245;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh"><span class="uname" style="color:#ed4245;">imnoob</span><span class="ts" id="ts4">今天 PM 6:06</span></div>
+            <div class="mt" id="mt4">你那張更拉</div>
+          </div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" style="width:40px;height:40px;background:#3ba55c;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh"><span class="uname" style="color:#3ba55c;">on9_916</span><span class="ts" id="ts5">今天 PM 6:07</span></div>
+            <div class="mt" id="mt5">好啦 其實很P殻 左邊圓框還能拉</div>
+          </div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" style="width:40px;height:40px;background:#ed4245;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh"><span class="uname" style="color:#ed4245;">imnoob</span><span class="ts" id="ts6">今天 PM 6:07</span></div>
+            <div class="mt" id="mt6">下面那個滑條也能拉吧 跟你一樣拉 ✌😪</div>
+          </div>
+        </div>
+
+        <div class="msg first">
+          <div class="msg-av-col" style="width:52px;">
+            <div class="dav" id="dav2" style="width:40px;height:40px;margin-top:2px;">
+              <i class="ti ti-user" style="font-size:18px;color:#fff"></i>
+            </div>
+          </div>
+          <div class="mc">
+            <div class="mh">
+              <span class="uname" id="you-name-2">你<span class="badge" id="badge-2">自己</span></span>
+              <span class="ts" id="ts7">今天 PM 6:07</span>
+            </div>
+            <div class="mt" id="mt7">差低 拉左邊的聊天室縮放預覽滑條<br>頭像跟文字都會跟著一起縮放喔</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="dc-inp-area">
+      <div class="dc-inp">
+        <i class="ti ti-plus"></i>
+        <span style="flex:1" id="inp-placeholder">傳送訊息到 #general</span>
+        <i class="ti ti-mood-smile"></i>
+        <i class="ti ti-gift"></i>
+        <i class="ti ti-sticker"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Maintained with 🤍 by <strong>ShiroN</strong></span>
+  <span>•</span>
+  <span>Inspired by Discord UI</span>
+  <span>•</span>
+  <span>© ShiroN's Garden 2026</span>
+</div>
+
+<script>
+const LANGS={
+  mixed:{
+    'lbl-avatar-settings':'頭像設定 / Avatar Settings',
+    'lbl-crop':'拖曳裁切 / Drag to Crop',
+    'lbl-circle-size':'圓框大小',
+    'lbl-dl':'下載頭像',
+    'lbl-reset':'重新上傳',
+    'lbl-preview':'尺寸預覽 / Size Preview',
+    'pv80-lbl':'個人頁 80px',
+    'pv40-lbl':'訊息 40px',
+    'pv24-lbl':'成員 24px',
+    'lbl-scale':'聊天室縮放預覽',
+    'lbl-chat-scale':'縮放大小',
+    'dc-topic-text':'頭像預覽頻道',
+    'heroSub':'Upload, crop and preview your avatar instantly',
+    'upload-title':'點擊上傳圖片 / Click to Upload',
+    'upload-sub':'PNG · JPG · WEBP',
+    'you-name-1':'你',
+    'you-name-2':'你',
+    'badge-1':'自己',
+    'badge-2':'自己',
+    'ts1':'今天 PM 6:05','ts2':'今天 PM 6:05','ts3':'今天 PM 6:06','ts4':'今天 PM 6:06','ts5':'今天 PM 6:07','ts6':'今天 PM 6:07','ts7':'今天 PM 6:07',
+    'mt1':'換頭像了 看看',
+    'mt1b':'左邊調完這邊會直接變',
+    'mt2':'這張可以 🔥🔥🔥',
+    'mt3':'我覺得拉完了 🗣',
+    'mt4':'你那張更拉',
+    'mt5':'好啦 其實很P殻 左邊圓框還能拉',
+    'mt6':'下面那個滑條也能拉吧 跟你一樣拉 ✌😪',
+    'mt7':'差低 拉左邊的聊天室縮放預覽滑條<br>頭像跟文字都會跟著一起縮放喔',
+    'inp-placeholder':'傳送訊息到 #general',
+    'langLabel':'Lang',
+  },
+  en:{
+    'lbl-avatar-settings':'Avatar Settings',
+    'lbl-crop':'Drag to Crop',
+    'lbl-circle-size':'Circle Size',
+    'lbl-dl':'Download',
+    'lbl-reset':'Re-upload',
+    'lbl-preview':'Size Preview',
+    'pv80-lbl':'Profile 80px',
+    'pv40-lbl':'Message 40px',
+    'pv24-lbl':'Member 24px',
+    'lbl-scale':'Chat Scale Preview',
+    'lbl-chat-scale':'Scale',
+    'dc-topic-text':'Avatar Preview Channel',
+    'heroSub':'Upload, crop and preview your avatar instantly',
+    'upload-title':'Click to Upload',
+    'upload-sub':'PNG · JPG · WEBP',
+    'you-name-1':'You',
+    'you-name-2':'You',
+    'badge-1':'me',
+    'badge-2':'me',
+    'ts1':'Today at 6:05 PM','ts2':'Today at 6:05 PM','ts3':'Today at 6:06 PM','ts4':'Today at 6:06 PM','ts5':'Today at 6:07 PM','ts6':'Today at 6:07 PM','ts7':'Today at 6:07 PM',
+    'mt1':'yo i got a new pfp',
+    'mt1b':'adjust on the left and it updates live',
+    'mt2':'ts is fire 🔥🔥🔥',
+    'mt3':'lwk ts new pfp is trash 🗣',
+    'mt4':'ur pfp is worse',
+    'mt5':'ok bro its actually peak <br> you could drag the circle to trim',
+    'mt6':'i think u can also drag the sliders <br> js like i drag these **** across ur face ✌😪',
+    'mt7':'XD <br> try dragging the chat scale slider on the left <br> both avatar and text will scale together',
+    'inp-placeholder':'Message #general',
+    'langLabel':'Lang',
+  },
+  zh:{
+    'lbl-avatar-settings':'頭像設定',
+    'lbl-crop':'拖曳裁切',
+    'lbl-circle-size':'圓框大小',
+    'lbl-dl':'下載頭像',
+    'lbl-reset':'重新上傳',
+    'lbl-preview':'尺寸預覽',
+    'pv80-lbl':'個人頁 80px',
+    'pv40-lbl':'訊息 40px',
+    'pv24-lbl':'成員 24px',
+    'lbl-scale':'聊天室縮放預覽',
+    'lbl-chat-scale':'縮放大小',
+    'dc-topic-text':'頭像預覽頻道',
+    'heroSub':'上傳、裁切並即時預覽你的頭像',
+    'upload-title':'點擊上傳圖片',
+    'upload-sub':'PNG · JPG · WEBP',
+    'you-name-1':'你',
+    'you-name-2':'你',
+    'badge-1':'自己',
+    'badge-2':'自己',
+    'ts1':'今天 PM 6:05','ts2':'今天 PM 6:05','ts3':'今天 PM 6:06','ts4':'今天 PM 6:06','ts5':'今天 PM 6:07','ts6':'今天 PM 6:07','ts7':'今天 PM 6:07',
+    'mt1':'換頭像了 看看',
+    'mt1b':'左邊調完這邊會直接變',
+    'mt2':'這張可以 🔥🔥🔥',
+    'mt3':'我覺得拉完了 🗣',
+    'mt4':'你那張更拉',
+    'mt5':'好啦 其實很P殻 左邊圓框還能拉',
+    'mt6':'下面那個滑條也能拉吧 跟你一樣拉 ✌😪',
+    'mt7':'差低 拉左邊的聊天室縮放預覽滑條<br>頭像跟文字都會跟著一起縮放喔',
+    'inp-placeholder':'傳送訊息到 #general',
+    'langLabel':'語言',
+  }
+};
+
+let currentLang='mixed';
+function applyLang(lang){
+  currentLang=lang;
+  const t=LANGS[lang];
+  document.querySelectorAll('#langSeg .seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));
+  Object.entries(t).forEach(([id,val])=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(id.startsWith('you-name-')){el.childNodes[0].textContent=val;return;}
+    el.innerHTML=val;
+  });
+}
+document.querySelectorAll('#langSeg .seg-btn').forEach(b=>{
+  b.addEventListener('click',()=>applyLang(b.dataset.lang));
+});
+
+const themeToggleBtn=document.getElementById('themeToggleBtn');
+const themeIcon=document.getElementById('themeIcon');
+let lightMode=false;
+themeToggleBtn.addEventListener('click',()=>{
+  lightMode=!lightMode;
+  document.documentElement.classList.toggle('light',lightMode);
+  if(lightMode){
+    themeIcon.className='ti ti-sun';
+    themeToggleBtn.title='Toggle dark mode';
+  }else{
+    themeIcon.className='ti ti-moon';
+    themeToggleBtn.title='Toggle light mode';
+  }
+});
+
+const panel=document.getElementById('resizablePanel');
+const rHandle=document.getElementById('resizeHandle');
+let rDragging=false,rStartX=0,rStartW=0;
+rHandle.addEventListener('mousedown',e=>{rDragging=true;rStartX=e.clientX;rStartW=panel.offsetWidth;rHandle.classList.add('dragging');e.preventDefault();});
+document.addEventListener('mousemove',e=>{
+  if(!rDragging)return;
+  const newW=Math.min(520,Math.max(220,rStartW+(e.clientX-rStartX)));
+  panel.style.width=newW+'px';
+  document.documentElement.style.setProperty('--panel-width',newW+'px');
+  updateBox();
+});
+document.addEventListener('mouseup',()=>{rDragging=false;rHandle.classList.remove('dragging');});
+
+const fileInput=document.getElementById('fileInput');
+const uploadZone=document.getElementById('uploadZone');
+const cropSec=document.getElementById('cropSec');
+const sc=document.getElementById('sc');
+const cw=document.getElementById('cw');
+const cb=document.getElementById('cb');
+const rh=document.getElementById('rh');
+const csSlider=document.getElementById('csSlider');
+const csVal=document.getElementById('csVal');
+const resetBtn=document.getElementById('resetBtn');
+const dlBtn=document.getElementById('dlBtn');
+const avSlider=document.getElementById('avSlider');
+const avVal=document.getElementById('avVal');
+
+let img=null;
+let cx=0,cy=0,cs=100;
+let isDragging=false,isResizing=false;
+let dx0=0,dy0=0,cx0=0,cy0=0,cs0=0;
+
+const MY_AVIDS=['dav1','dav2'];
+const PREV_SIZES={pv80:72,pv40:40,pv24:24};
+
+function initAvatarImages(src){
+  MY_AVIDS.forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML=`<img src="${src}" id="${id}_img" alt="avatar" style="position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;">`;
+  });
+  Object.keys(PREV_SIZES).forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML=`<img src="${src}" id="${id}_img" alt="avatar" style="position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;">`;
+  });
+}
+
+function syncPreviews(){
+  if(!img)return;
+  MY_AVIDS.forEach(id=>{
+    const el=document.getElementById(id);
+    const imgEl=document.getElementById(id+'_img');
+    if(!imgEl)return;
+    const targetSize=parseFloat(el.style.width)||40;
+    const s=targetSize/cs;
+    imgEl.style.width=img.naturalWidth+'px';
+    imgEl.style.height=img.naturalHeight+'px';
+    imgEl.style.transform=`translate(${-cx*s}px,${-cy*s}px) scale(${s})`;
+  });
+  Object.entries(PREV_SIZES).forEach(([id,targetSize])=>{
+    const imgEl=document.getElementById(id+'_img');
+    if(!imgEl)return;
+    const s=targetSize/cs;
+    imgEl.style.width=img.naturalWidth+'px';
+    imgEl.style.height=img.naturalHeight+'px';
+    imgEl.style.transform=`translate(${-cx*s}px,${-cy*s}px) scale(${s})`;
+  });
+}
+
+function updateSliderFill(slider){
+  const min=+slider.min,max=+slider.max,val=+slider.value;
+  const pct=((val-min)/(max-min)*100).toFixed(1)+'%';
+  slider.style.setProperty('--pct',pct);
+}
+[csSlider,avSlider].forEach(s=>s.addEventListener('input',()=>updateSliderFill(s)));
+[csSlider,avSlider].forEach(s=>updateSliderFill(s));
+
+function applyScaleChat(s){
+  const body=document.getElementById('dcBody');
+  const ratio=s/40;
+  body.style.transform=`scale(${ratio})`;
+  body.style.transformOrigin='top left';
+  body.style.width=(100/ratio)+'%';
+}
+
+avSlider.addEventListener('input',()=>{
+  const s=+avSlider.value;
+  avVal.textContent=s+'px';
+  applyScaleChat(s);
+});
+
+uploadZone.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>loadImage(ev.target.result);
+  r.readAsDataURL(f);
+});
+
+function loadImage(src){
+  img=new Image();
+  img.onload=()=>{
+    sc.width=img.naturalWidth;
+    sc.height=img.naturalHeight;
+    const ctx=sc.getContext('2d');
+    ctx.clearRect(0,0,sc.width,sc.height);
+    ctx.drawImage(img,0,0);
+
+    cs=Math.min(Math.round(img.naturalWidth*.65),Math.round(img.naturalHeight*.65));
+    cx=Math.round((img.naturalWidth-cs)/2);
+    cy=Math.round((img.naturalHeight-cs)/2);
+
+    csSlider.min=20;
+    csSlider.max=Math.min(img.naturalWidth,img.naturalHeight);
+    csSlider.value=cs;
+    csVal.textContent=cs+'px';
+    updateSliderFill(csSlider);
+
+    initAvatarImages(src);
+
+    uploadZone.style.display='none';
+    cropSec.style.display='flex';
+    applyScaleChat(+avSlider.value);
+
+    // 核心修正：利用 requestAnimationFrame 延遲一幀執行 updateBox()
+    // 確保瀏覽器已經完成 DOM 的 display 切換與排版，讓 sc.offsetWidth 能拿到正確的寬度
+    requestAnimationFrame(()=>{
+      updateBox();
+    });
+  };
+  img.src=src;
+}
+
+function getVisScale(){
+  // 如果 sc.offsetWidth 尚未準備好，回傳一個安全的基本縮放比，避免除以 0 歪掉
+  if(!sc.offsetWidth||!img) return 1;
+  return sc.offsetWidth/img.naturalWidth;
+}
+
+function updateBox(){
+  if(!img)return;
+  const vs=getVisScale();
+  cb.style.left=(cx*vs)+'px';
+  cb.style.top=(cy*vs)+'px';
+  cb.style.width=(cs*vs)+'px';
+  cb.style.height=(cs*vs)+'px';
+  syncPreviews();
+}
+
+csSlider.addEventListener('input',()=>{
+  const newCs=+csSlider.value;
+  const centerX=cx+cs/2,centerY=cy+cs/2;
+  let newCx=centerX-newCs/2,newCy=centerY-newCs/2;
+  newCx=Math.max(0,Math.min(newCx,img.naturalWidth-newCs));
+  newCy=Math.max(0,Math.min(newCy,img.naturalHeight-newCs));
+  cs=newCs;cx=newCx;cy=newCy;
+  csVal.textContent=Math.round(cs)+'px';
+  updateBox();
+});
+
+cb.addEventListener('mousedown',e=>{
+  if(e.target===rh)return;
+  isDragging=true;dx0=e.clientX;dy0=e.clientY;cx0=cx;cy0=cy;e.preventDefault();
+});
+rh.addEventListener('mousedown',e=>{
+  isResizing=true;dx0=e.clientX;dy0=e.clientY;cx0=cx;cy0=cy;cs0=cs;e.stopPropagation();e.preventDefault();
+});
+cb.addEventListener('touchstart',e=>{
+  if(e.target===rh)return;
+  isDragging=true;dx0=e.touches[0].clientX;dy0=e.touches[0].clientY;cx0=cx;cy0=cy;e.preventDefault();
+},{passive:false});
+rh.addEventListener('touchstart',e=>{
+  isResizing=true;dx0=e.touches[0].clientX;dy0=e.touches[0].clientY;cx0=cx;cy0=cy;cs0=cs;e.stopPropagation();e.preventDefault();
+},{passive:false});
+
+function onMove(px,py){
+  const vs=getVisScale();
+  if(isDragging){
+    cx=Math.max(0,Math.min(cx0+(px-dx0)/vs,img.naturalWidth-cs));
+    cy=Math.max(0,Math.min(cy0+(py-dy0)/vs,img.naturalHeight-cs));
+    updateBox();
+  } else if(isResizing){
+    const deltaX=(px-dx0)/vs,deltaY=(py-dy0)/vs;
+    const delta=Math.max(deltaX,deltaY);
+    let newCs=cs0+delta*2;
+    const centerX=cx0+cs0/2,centerY=cy0+cs0/2;
+    const maxAvail=Math.min(centerX*2,centerY*2,(img.naturalWidth-centerX)*2,(img.naturalHeight-centerY)*2);
+    newCs=Math.max(20,Math.min(newCs,maxAvail));
+    const newCx=centerX-newCs/2,newCy=centerY-newCs/2;
+    cs=newCs;cx=newCx;cy=newCy;
+    csSlider.value=Math.round(cs);csVal.textContent=Math.round(cs)+'px';updateSliderFill(csSlider);
+    updateBox();
+  }
+}
+document.addEventListener('mousemove',e=>{if(isDragging||isResizing)onMove(e.clientX,e.clientY);});
+document.addEventListener('touchmove',e=>{if(isDragging||isResizing){onMove(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();}},{passive:false});
+document.addEventListener('mouseup',()=>{isDragging=false;isResizing=false;});
+document.addEventListener('touchend',()=>{isDragging=false;isResizing=false;});
+
+dlBtn.addEventListener('click',()=>{
+  if(!img)return;
+  const out=document.createElement('canvas');
+  const sz=512;out.width=sz;out.height=sz;
+  const ctx=out.getContext('2d');
+  ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2,0,Math.PI*2);ctx.clip();
+  ctx.drawImage(img,
+    Math.round(cx),Math.round(cy),
+    Math.round(cs),Math.round(cs),
+    0,0,sz,sz
+  );
+  const a=document.createElement('a');
+  a.href=out.toDataURL('image/png');
+  a.download='avatar.png';a.click();
+});
+
+resetBtn.addEventListener('click',()=>{
+  uploadZone.style.display='';
+  cropSec.style.display='none';
+  fileInput.value='';img=null;
+  MY_AVIDS.forEach(id=>{
+    document.getElementById(id).innerHTML='<i class="ti ti-user" style="font-size:18px;color:#fff"></i>';
+  });
+  [{id:'pv80',fs:30},{id:'pv40',fs:18},{id:'pv24',fs:11}].forEach(({id,fs})=>{
+    document.getElementById(id).innerHTML=`<i class="ti ti-user" style="font-size:${fs}px;color:#fff"></i>`;
+  });
+  avSlider.value=40;avVal.textContent='40px';updateSliderFill(avSlider);
+  applyScaleChat(40);
+});
+
+window.addEventListener('resize',()=>{if(img)updateBox();});
+</script>
+</body>
+</html>
